@@ -7,7 +7,39 @@
 namespace std
 {
     %naturalvar string;
-    
+
+    %typemap(in,checkfn="lua_isstring") string
+    %{$1.assign(lua_tostring(L,$input),lua_rawlen(L,$input));%}
+
+    %typemap(out) string
+    %{ lua_pushlstring(L,$1.data(),$1.size()); SWIG_arg++;%}
+
+    %typemap(in,checkfn="lua_isstring") const string& ($*1_ltype temp)
+    %{temp.assign(lua_tostring(L,$input),lua_rawlen(L,$input)); $1=&temp;%}
+
+    %typemap(out) const string&
+    %{ lua_pushlstring(L,$1->data(),$1->size()); SWIG_arg++;%}
+
+    // for throwing of any kind of string, string ref's and string pointers
+    // we convert all to lua strings
+    %typemap(throws) string, string&, const string&
+    %{ lua_pushlstring(L,$1.data(),$1.size()); SWIG_fail;%}
+
+    %typemap(throws) string*, const string*
+    %{ lua_pushlstring(L,$1->data(),$1->size()); SWIG_fail;%}
+
+    %typecheck(SWIG_TYPECHECK_STRING) string, const string& {
+    $1 = lua_isstring(L,$input);
+    }
+
+    %typemap(in) string &INPUT=const string &;
+    %typemap(in, numinputs=0) string &OUTPUT ($*1_ltype temp)
+    %{ $1 = &temp; %}
+    %typemap(argout) string &OUTPUT
+    %{ lua_pushlstring(L,$1->data(),$1->size()); SWIG_arg++;%}
+    %typemap(in) string &INOUT =const string &;
+    %typemap(argout) string &INOUT = string &OUTPUT;
+
     class string
     {
     public:
